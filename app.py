@@ -110,34 +110,120 @@ def sample_from_cube(faces_dict, dx, dy, dz, face_size):
     return img.getpixel((px, py))
 
 
-def create_equirectangular(faces_dict, face_size):
+import numpy as np
+import cv2
+
+def create_equirectangular_fast(faces_dict, face_size):
     """
-    Собирает equirectangular-панораму из словаря faces_dict,
-    используя размер face_size (квадратные грани face_size×face_size).
-    Выходной размер: (4*face_size)×(2*face_size).
+    Быстрый рендер equirectangular-панорамы с помощью NumPy+OpenCV.
+    faces_dict: {"front": PIL.Image, ...}, face_size: int (например, 2048).
+    Возвращает PIL.Image размера (4*face_size × 2*face_size).
     """
+    H = 2 * face_size
+    W = 4 * face_size
 
-    out_width = 4 * face_size
-    out_height = 2 * face_size
+    # 1) theta ∈ [−π, +π), phi ∈ [+π/2, −π/2]
+    xs = np.linspace(-np.pi, np.pi, W, endpoint=False, dtype=np.float32)     # θ
+    ys = np.linspace(np.pi/2, -np.pi/2, H, endpoint=False, dtype=np.float32)  # φ
 
-    equi = Image.new("RGB", (out_width, out_height))
-    pixels = equi.load()
+    theta = np.repeat(xs[np.newaxis, :], H, axis=0)   # shape (H, W)
+    phi   = np.repeat(ys[:, np.newaxis], W, axis=1)   # shape (H, W)
 
-    for y in range(out_height):
-        # phi от +π/2 до –π/2
-        phi = math.pi * (0.5 - y / out_height)
-        for x in range(out_width):
-            # theta от –π до +π
-            theta = 2 * math.pi * (x / out_width - 0.5)
+    cos_phi = np.cos(phi)
+    dx = cos_phi * np.sin(theta)
+    dy = np.sin(phi)
+    dz = cos_phi * np.cos(theta)
 
-            dx = math.cos(phi) * math.sin(theta)
-            dy = math.sin(phi)
-            dz = math.cos(phi) * math.cos(theta)
+    abs_dx = np.abs(dx)
+    abs_dy = np.abs(dy)
+    abs_dz = np.abs(dz)
 
-            color = sample_from_cube(faces_dict, dx, dy, dz, face_size)
-            pixels[x, y] = color
+    # Карта перекладки и индекс грани
+    map_x = np.zeros((H, W), dtype=np.float32)
+    map_y = np.zeros((H, W), dtype=np.float32)
+    face_idx = np.zeros((H, W), dtype=np.int8)
 
-    return equi
+    # Маски для граней
+    mask_x = (abs_dx >= abs_dy) & (abs_dx >= abs_dz)
+    right_mask = mask_x & (dx > 0)
+    left_mask  = mask_x & (dx < 0)
+
+    mask_y = (abs_dy >= abs_dx) & (abs_dy >= abs_dz)
+    top_mask  = mask_y & (dy > 0)
+    down_mask = mask_y & (dy < 0)
+
+    mask_z = (abs_dz >= abs_dx) & (abs_dz >= abs_dy)
+    front_mask = mask_z & (dz > 0)
+    back_mask  = mask_z & (dz < 0)
+
+    # Правый (0)
+    u = (-dz[right_mask] / abs_dx[right_mask] + 1) * 0.5
+    v = (-dy[right_mask] / abs_dx[right_mask] + 1) * 0.5
+    map_x[right_mask] = u * (face_size - 1)
+    map_y[right_mask] = v * (face_size - 1)
+    face_idx[right_mask] = 0
+
+    # Левый (1)
+    u = ( dz[left_mask] / abs_dx[left_mask] + 1) * 0.5
+    v = (-dy[left_mask] / abs_dx[left_mask] + 1) * 0.5
+    map_x[left_mask] = u * (face_size - 1)
+    map_y[left_mask] = v * (face_size - 1)
+    face_idx[left_mask] = 1
+
+    # Верхний (2)
+    u = (dx[top_mask] / abs_dy[top_mask] + 1) * 0.5
+    v = (dz[top_mask] / abs_dy[top_mask] + 1) * 0.5
+    map_x[top_mask] = u * (face_size - 1)
+    map_y[top_mask] = v * (face_size - 1)
+    face_idx[top_mask] = 2
+
+    # Нижний (3)
+    u = (dx[down_mask] / abs_dy[down_mask] + 1) * 0.5
+    v = (-dz[down_mask] / abs_dy[down_mask] + 1) * 0.5
+    map_x[down_mask] = u * (face_size - 1)
+    map_y[down_mask] = v * (face_size - 1)
+    face_idx[down_mask] = 3
+
+    # Передний (4)
+    u = (dx[front_mask] / abs_dz[front_mask] + 1) * 0.5
+    v = (-dy[front_mask] / abs_dz[front_mask] + 1) * 0.5
+    map_x[front_mask] = u * (face_size - 1)
+    map_y[front_mask] = v * (face_size - 1)
+    face_idx[front_mask] = 4
+
+    # Задний (5)
+    u = (-dx[back_mask] / abs_dz[back_mask] + 1) * 0.5
+    v = (-dy[back_mask] / abs_dz[back_mask] + 1) * 0.5
+    map_x[back_mask] = u * (face_size - 1)
+    map_y[back_mask] = v * (face_size - 1)
+    face_idx[back_mask] = 5
+
+    # Создаём итоговый массив H×W×3
+    pano = np.zeros((H, W, 3), dtype=np.uint8)
+
+    # Проходим по каждой грани и применяем remap
+    for i, face_name in enumerate(["right", "left", "top", "down", "front", "back"]):
+        mask = (face_idx == i)
+        if not np.any(mask):
+            continue
+        src_img = np.array(faces_dict[face_name])  # PIL→NumPy
+        mx = map_x.copy()
+        my = map_y.copy()
+        mx[~mask] = 0
+        my[~mask] = 0
+
+        remapped = cv2.remap(
+            src_img,
+            mx,
+            my,
+            interpolation=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=0
+        )
+        pano[mask] = remapped[mask]
+
+    return Image.fromarray(pano)
+
 
 
 @app.route("/stitch", methods=["POST"])
@@ -152,7 +238,7 @@ def stitch():
     except Exception as e:
         return abort(400, f"Ошибка загрузки изображений: {e}")
 
-    pano = create_equirectangular(faces, face_size)
+    pano = create_equirectangular_fast(faces, face_size)
 
     buf = io.BytesIO()
     pano.save(buf, format="JPEG", quality=90)
