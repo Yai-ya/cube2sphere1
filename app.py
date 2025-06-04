@@ -91,5 +91,12 @@ def stitch():
         attachment_filename="panorama.jpg"
     )
 
+@app.route("/", methods=["GET"])
+def index():
+    return """
+    <h2>Cube2Sphere сервис запущен!</h2>
+    <p>Чтобы получить панораму, сделайте POST /stitch с полями front, back, left, right, top, down.</p>
+    """
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
