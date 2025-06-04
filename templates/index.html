@@ -8,16 +8,49 @@
     h1 { text-align: center; }
     label { display: block; margin: 10px 0; }
     input[type="file"] { display: block; margin-top: 5px; }
-    button { margin-top: 15px; padding: 8px 12px; }
+    button { margin-top: 15px; padding: 8px 12px; cursor: pointer; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Стили для спиннера */
+    .spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: none; /* По умолчанию скрыт */
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .spinner {
+      border: 12px solid #f3f3f3;
+      border-top: 12px solid #3498db;
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .loading-text {
+      margin-top: 10px;
+      font-size: 18px;
+      color: #333;
+      text-align: center;
+    }
+
     #resultImg { margin-top: 20px; max-width: 100%; border: 1px solid #ccc; }
     #downloadLink { display: block; margin-top: 10px; }
   </style>
 </head>
 <body>
   <h1>Cube2Sphere</h1>
-  <p>Загрузите 6 изображений (квадратные, желательно одинакового размера), чтобы получить equirectangular-панораму.</p>
+  <p>Загрузите 6 изображений (квадратные, до 2048×2048), чтобы получить equirectangular-панораму.</p>
 
-  <!-- ОБЯЗАТЕЛЬНО: enctype="multipart/form-data" -->
   <form id="cubeForm" enctype="multipart/form-data">
     <label>Front:
       <input type="file" name="front" accept="image/*" required>
@@ -41,9 +74,16 @@
   </form>
 
   <img id="resultImg" style="display:none;" alt="Результат панорамы">
-  <a id="downloadLink" href="#" download="panorama.jpg" style="display:none;">Скачать JPG</a>
+  <a id="downloadLink" href="#" download="panorama.png" style="display:none;">Скачать PNG</a>
 
-  <!-- Подключаем JS, который делает POST /stitch -->
+  <!-- Оверлей со спиннером и текстом загрузки -->
+  <div class="spinner-overlay" id="spinnerOverlay">
+    <div>
+      <div class="spinner"></div>
+      <div class="loading-text">Генерируется панорама, подождите…</div>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
