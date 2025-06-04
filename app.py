@@ -5,27 +5,26 @@ import io
 
 app = Flask(__name__)
 
-# Размер каждой грани куба (будем ресайзить входные изображения до 512×512)
+# Размер каждой грани куба (мы ресайзим входные изображения до 512×512)
 CUBE_FACE_SIZE = 512
 
-# Имена полей, которые клиент обязан прислать в форме
+# Поля, которые клиент должен прислать в форме
 REQUIRED_FIELDS = ["front", "back", "left", "right", "top", "down"]
 
 
 @app.route("/", methods=["GET"])
 def index():
     """
-    Отдаём пользователю HTML-страницу с формой для загрузки 6-ти изображений.
-    Шаблон лежит в папке templates/index.html
+    Отдаём HTML-страницу с формой для загрузки 6-ти изображений.
+    Файл шаблона лежит в templates/index.html
     """
     return render_template("index.html")
 
 
 def load_cube_faces(files_dict):
     """
-    Загружает из request.files шесть изображений по ключам REQUIRED_FIELDS.
-    Возвращает словарь PIL.Image { "front": <Image>, "back": <Image>, ... }.
-    Если какое-то поле не передано, бросает исключение ValueError.
+    Берёт из request.files шесть изображений по ключам REQUIRED_FIELDS,
+    приводит каждое к размеру 512×512 и возвращает словарь PIL.Image.
     """
     faces = {}
     for face in REQUIRED_FIELDS:
@@ -39,16 +38,14 @@ def load_cube_faces(files_dict):
 
 def sample_from_cube(faces_dict, dx, dy, dz):
     """
-    Для заданного нормализованного вектора (dx, dy, dz) определяет, какая грань куба
-    (front/back/left/right/top/down) соответствует этому направлению, и берёт пиксель
-    из соответствующей картинки.
-    Возвращает RGB-кортеж (r, g, b).
+    Для нормализованного вектора (dx, dy, dz) находит, к какой грани куба он относится,
+    и возвращает цвет пикселя из соответствующего изображения.
     """
     abs_dx, abs_dy, abs_dz = abs(dx), abs(dy), abs(dz)
 
-    # Определяем, какая из компонент имеет наибольшую абсолютную величину
+    # Наибольшая компонента определяет грань
     if abs_dx >= abs_dy and abs_dx >= abs_dz:
-        # Смотрим на ±X: правая или левая грань
+        # ±X: правая или левая
         if dx > 0:
             face = "right"
             u = (-dz / abs_dx + 1) / 2
@@ -59,7 +56,7 @@ def sample_from_cube(faces_dict, dx, dy, dz):
             v = (-dy / abs_dx + 1) / 2
 
     elif abs_dy >= abs_dx and abs_dy >= abs_dz:
-        # Смотрим на ±Y: верхняя или нижняя грань
+        # ±Y: верхняя или нижняя
         if dy > 0:
             face = "top"
             u = (dx / abs_dy + 1) / 2
@@ -70,7 +67,7 @@ def sample_from_cube(faces_dict, dx, dy, dz):
             v = (-dz / abs_dy + 1) / 2
 
     else:
-        # Смотрим на ±Z: передняя или задняя грань
+        # ±Z: передняя или задняя
         if dz > 0:
             face = "front"
             u = (dx / abs_dz + 1) / 2
@@ -88,17 +85,17 @@ def sample_from_cube(faces_dict, dx, dy, dz):
 
 def create_equirectangular(faces_dict, out_width=1024, out_height=512):
     """
-    Строит equirectangular-панораму (размером out_width×out_height) из шести граней куба.
-    Возвращает PIL.Image размера (out_width, out_height).
+    Собирает equirectangular-панораму (размером out_width×out_height)
+    из шести граней куба. Возвращает PIL.Image.
     """
     equi = Image.new("RGB", (out_width, out_height))
     pixels = equi.load()
 
     for y in range(out_height):
-        # phi: от +π/2 (y=0) до –π/2 (y=out_height)
+        # phi: от +π/2 до –π/2
         phi = math.pi * (0.5 - y / out_height)
         for x in range(out_width):
-            # theta: от –π (x=0) до +π (x=out_width)
+            # theta: от –π до +π
             theta = 2 * math.pi * (x / out_width - 0.5)
 
             dx = math.cos(phi) * math.sin(theta)
@@ -114,8 +111,8 @@ def create_equirectangular(faces_dict, out_width=1024, out_height=512):
 @app.route("/stitch", methods=["POST"])
 def stitch():
     """
-    Принимает POST-запрос с шестью файлами (поля: front, back, left, right, top, down).
-    Строит equirectangular-панораму и возвращает её как JPG.
+    Принимает POST /stitch с шестью файлами (front, back, left, right, top, down),
+    собирает equirectangular-панораму и возвращает её как JPG.
     """
     try:
         faces = load_cube_faces(request.files)
@@ -124,19 +121,19 @@ def stitch():
 
     pano = create_equirectangular(faces, out_width=1024, out_height=512)
 
-    # Записываем в байтовый буфер и отдаем как jpg
     buf = io.BytesIO()
     pano.save(buf, format="JPEG", quality=90)
     buf.seek(0)
 
+    # Здесь меняем attachment_filename на download_name
     return send_file(
         buf,
         mimetype="image/jpeg",
         as_attachment=True,
-        attachment_filename="panorama.jpg"
+        download_name="panorama.jpg"
     )
 
 
 if __name__ == "__main__":
-    # Запуск локального сервера (для разработки)
+    # Для локальной разработки
     app.run(host="0.0.0.0", port=5000, debug=True)
