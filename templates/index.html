@@ -15,9 +15,10 @@
 </head>
 <body>
   <h1>Cube2Sphere</h1>
-  <p>Загрузите 6 изображений (512×512 px или больше), чтобы получить equirectangular-панораму.</p>
+  <p>Загрузите 6 изображений (квадратные, желательно одинакового размера), чтобы получить equirectangular-панораму.</p>
 
-  <form id="cubeForm">
+  <!-- ОБЯЗАТЕЛЬНО: enctype="multipart/form-data" -->
+  <form id="cubeForm" enctype="multipart/form-data">
     <label>Front:
       <input type="file" name="front" accept="image/*" required>
     </label>
@@ -42,7 +43,7 @@
   <img id="resultImg" style="display:none;" alt="Результат панорамы">
   <a id="downloadLink" href="#" download="panorama.jpg" style="display:none;">Скачать JPG</a>
 
-  <!-- Подключаем скрипт из папки static/script.js -->
+  <!-- Подключаем JS, который делает POST /stitch -->
   <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
