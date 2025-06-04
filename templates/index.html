@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Cube2Sphere — Склейка кубических карт</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
+    h1 { text-align: center; }
+    label { display: block; margin: 10px 0; }
+    input[type="file"] { display: block; margin-top: 5px; }
+    button { margin-top: 15px; padding: 8px 12px; }
+    #resultImg { margin-top: 20px; max-width: 100%; border: 1px solid #ccc; }
+    #downloadLink { display: block; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Cube2Sphere</h1>
+  <p>Загрузите 6 изображений (512×512 px или больше), чтобы получить equirectangular-панораму.</p>
+
+  <form id="cubeForm">
+    <label>Front:
+      <input type="file" name="front" accept="image/*" required>
+    </label>
+    <label>Back:
+      <input type="file" name="back" accept="image/*" required>
+    </label>
+    <label>Left:
+      <input type="file" name="left" accept="image/*" required>
+    </label>
+    <label>Right:
+      <input type="file" name="right" accept="image/*" required>
+    </label>
+    <label>Top:
+      <input type="file" name="top" accept="image/*" required>
+    </label>
+    <label>Down:
+      <input type="file" name="down" accept="image/*" required>
+    </label>
+    <button type="submit">Склеить панораму</button>
+  </form>
+
+  <img id="resultImg" style="display:none;" alt="Результат панорамы">
+  <a id="downloadLink" href="#" download="panorama.jpg" style="display:none;">Скачать JPG</a>
+
+  <!-- Подключаем скрипт из папки static/script.js -->
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
