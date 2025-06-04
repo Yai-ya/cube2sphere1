@@ -19,25 +19,22 @@ def index():
 
 def load_cube_faces(files_dict):
     """
-    Читает из request.files шесть изображений по ключам REQUIRED_FIELDS.
-    Проверяет, что они квадратные и одинакового размера:
-      - Если картинка не квадратная, обрезаем её по центру до квадрата наименьшей стороны.
-      - Если размеры у всех разные, приводим всё к размеру первой картинки (либо к минимальной общей стороне).
-    Возвращает: (faces_dict, face_size) — словарь PIL.Image { "front": <Image>, ... }
-        и face_size (целое) — базовый размер квадрата.
+    Загружает шесть квадратных изображений (front, back, left, right, top, down).
+    Если картинка не квадратная — обрезает по центру до квадрата. 
+    Затем вычисляет минимальный face_size из всех сторон, 
+    но не больше MAX_FACE (1024 px). 
+    После ресайзит все грани до (face_size × face_size).
+    Возвращает (faces_dict, face_size).
     """
     faces = {}
     face_size = None
 
+    # Читаем и обрезаем (crop) каждую грань до квадрата
     for face in REQUIRED_FIELDS:
-        if face not in files_dict:
-            raise ValueError(f"Missing field: {face}")
-
-        # Открываем картинку и приводим к RGB
         img = Image.open(files_dict[face]).convert("RGB")
         w, h = img.size
 
-        # Если не квадрат, обрезаем (crop) по центру до квадрата = min(w, h)
+        # Crop до квадрата
         if w != h:
             base = min(w, h)
             left = (w - base) // 2
@@ -45,16 +42,21 @@ def load_cube_faces(files_dict):
             img = img.crop((left, top, left + base, top + base))
             w = h = base
 
-        # Инициализируем face_size размерами первой картинки
+        # Фиксируем размер первой пакривали и находим минимальный размер среди всех
         if face_size is None:
             face_size = w
         else:
-            # Если текущая картинка отличается по размеру, ресайзим её до face_size×face_size
-            if w != face_size:
-                img = img.resize((face_size, face_size))
-                w = h = face_size
+            face_size = min(face_size, w)
 
         faces[face] = img
+
+    # Ограничиваем максимально допустимый размер грани
+    MAX_FACE = 1024
+    face_size = min(face_size, MAX_FACE)
+
+    # Приводим все грани в faces к размеру (face_size × face_size)
+    for face in REQUIRED_FIELDS:
+        faces[face] = faces[face].resize((face_size, face_size))
 
     return faces, face_size
 
