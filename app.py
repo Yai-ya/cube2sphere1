@@ -22,7 +22,7 @@ def load_cube_faces(files_dict):
     Загружает шесть квадратных изображений (front, back, left, right, top, down).
     Если картинка не квадратная — обрезает по центру до квадрата. 
     Затем вычисляет минимальный face_size из всех сторон, 
-    но не больше MAX_FACE (1024 px). 
+    но не больше MAX_FACE (2048 px). 
     После ресайзит все грани до (face_size × face_size).
     Возвращает (faces_dict, face_size).
     """
@@ -51,7 +51,7 @@ def load_cube_faces(files_dict):
         faces[face] = img
 
     # Ограничиваем максимально допустимый размер грани
-    MAX_FACE = 1024
+    MAX_FACE = 2048
     face_size = min(face_size, MAX_FACE)
 
     # Приводим все грани в faces к размеру (face_size × face_size)
