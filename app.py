@@ -223,15 +223,15 @@ def stitch():
     pano = create_equirectangular_chunked(faces_np, face_size)
 
     buf = io.BytesIO()
-pano.save(buf, format="JPEG", quality=95)  # или quality=90 для меньшего веса
-buf.seek(0)
+    pano.save(buf, format="JPEG", quality=95)  # или quality=90 для меньшего веса
+    buf.seek(0)
 
-return send_file(
-    buf,
-    mimetype="image/jpeg",
-    as_attachment=True,
-    download_name="panorama.jpg"
-)
+    return send_file(
+        buf,
+        mimetype="image/jpeg",
+        as_attachment=True,
+        download_name="panorama.jpg"
+    )
 
 
 if __name__ == "__main__":
