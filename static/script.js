@@ -29,7 +29,7 @@ form.addEventListener('submit', async (e) => {
       throw new Error(`Ошибка сервера: ${response.status} — ${text}`);
     }
 
-    // Получаем PNG в виде Blob и создаём URL
+    // Получаем JPG в виде Blob и создаём URL
     const blob = await response.blob();
     const imgURL = URL.createObjectURL(blob);
 
