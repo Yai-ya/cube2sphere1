@@ -30,7 +30,8 @@ def stitch():
 
         face_size = 2048
         width = 4 * face_size
-        height = 2 * face_size
+        height = 3 * face_size  # исправлено с 2 * face_size
+
         result = np.zeros((height, width, 3), dtype=np.uint8)
 
         face_images = {face: cv2.imread(path) for face, path in face_paths.items()}
@@ -44,7 +45,7 @@ def stitch():
         insert("front", face_size, face_size)
         insert("right", 2 * face_size, face_size)
         insert("back", 3 * face_size, face_size)
-        insert("down", face_size, 2 * face_size)
+        insert("down", face_size, 2 * face_size)  # теперь влезает
 
         output_path = os.path.join(temp_dir, "panorama.jpg")
         cv2.imwrite(output_path, result)
