@@ -42,6 +42,8 @@ form.addEventListener('submit', async (e) => {
 
     downloadLink.href = imgURL;
     downloadLink.style.display = 'inline';
+    downloadLink.download = "panorama.jpg";
+    downloadLink.textContent = "Скачать JPG";
   } catch (err) {
     // При ошибке тоже скрываем спиннер и разблокируем кнопку
     spinnerOverlay.style.display = 'none';
